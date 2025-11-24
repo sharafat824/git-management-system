@@ -18,10 +18,12 @@ class GitHubWebhookController extends Controller
         Log::info("=== GITHUB WEBHOOK RECEIVED ===");
         Log::info("Event: {$event}");
         Log::info("Action: " . ($payload['action'] ?? 'N/A'));
-        Log::info("Full Payload:", $payload);
 
         try {
             switch ($event) {
+                case 'ping':
+                    $this->handlePingEvent($payload);
+                    break;
                 case 'repository':
                     $this->handleRepositoryEvent($payload);
                     break;
@@ -43,29 +45,27 @@ class GitHubWebhookController extends Controller
         }
     }
 
+    private function handlePingEvent(array $payload): void
+    {
+        Log::info("Ping event received - Webhook is active");
+
+        // Auto-create repository from ping event if it doesn't exist
+        if (isset($payload['repository'])) {
+            $repo = $payload['repository'];
+            Log::info("Repository info in ping: {$repo['full_name']}");
+
+            $this->syncRepository($repo);
+            Log::info("Repository auto-added from ping: {$repo['full_name']}");
+        }
+    }
+
     private function handleRepositoryEvent(array $payload): void
     {
         $action = $payload['action'] ?? 'unknown';
         Log::info("Repository event - Action: {$action}");
 
         if ($action === 'created') {
-            $repo = $payload['repository'];
-            Log::info("Creating repository: {$repo['full_name']}");
-
-            $repository = Repository::updateOrCreate(
-                ['github_id' => $repo['id']],
-                [
-                    'name' => $repo['name'],
-                    'full_name' => $repo['full_name'],
-                    'url' => $repo['html_url'],
-                    'description' => $repo['description'] ?? null,
-                    'private' => $repo['private'] ?? false,
-                    'default_branch' => $repo['default_branch'],
-                    'owner_info' => $repo['owner'] ?? [],
-                ]
-            );
-
-            Log::info("Repository saved - ID: {$repository->id}, Name: {$repository->full_name}");
+            $this->syncRepository($payload['repository']);
         } else {
             Log::info("Repository action '{$action}' not handled");
         }
@@ -82,21 +82,26 @@ class GitHubWebhookController extends Controller
 
             Log::info("Branch creation - Repo ID: {$repoId}, Branch: {$branchName}");
 
-            $repository = Repository::where('github_id', $repoId)->first();
+            // First, ensure the repository exists
+            $repository = $this->ensureRepositoryExists($payload['repository']);
 
             if ($repository) {
-                Branch::create([
-                    'repository_id' => $repository->id,
-                    'name' => $branchName,
-                    'github_sha' => $payload['master_commit'] ?? $payload['before'] ?? 'unknown',
-                    'created_by' => $payload['sender']['login'] ?? 'unknown',
-                    'source_branch' => $this->determineSourceBranch($payload),
-                    'linked_task' => $this->extractLinkedTask($branchName),
-                ]);
+                Branch::updateOrCreate(
+                    [
+                        'repository_id' => $repository->id,
+                        'name' => $branchName,
+                    ],
+                    [
+                        'github_sha' => $payload['master_commit'] ?? $payload['before'] ?? 'unknown',
+                        'created_by' => $payload['sender']['login'] ?? 'unknown',
+                        'source_branch' => $this->determineSourceBranch($payload),
+                        'linked_task' => $this->extractLinkedTask($branchName),
+                    ]
+                );
 
                 Log::info("Branch created successfully: {$branchName}");
             } else {
-                Log::warning("Repository not found for GitHub ID: {$repoId}");
+                Log::warning("Failed to create repository for GitHub ID: {$repoId}");
             }
         }
     }
@@ -112,7 +117,8 @@ class GitHubWebhookController extends Controller
 
             Log::info("Branch push - Repo ID: {$repoId}, Branch: {$branchName}");
 
-            $repository = Repository::where('github_id', $repoId)->first();
+            // First, ensure the repository exists
+            $repository = $this->ensureRepositoryExists($payload['repository']);
 
             if ($repository) {
                 $branch = Branch::where('repository_id', $repository->id)
@@ -125,10 +131,58 @@ class GitHubWebhookController extends Controller
                     ]);
                     Log::info("Branch updated: {$branchName}");
                 } else {
-                    Log::warning("Branch not found: {$branchName}");
+                    // Create the branch if it doesn't exist
+                    Branch::create([
+                        'repository_id' => $repository->id,
+                        'name' => $branchName,
+                        'github_sha' => $payload['after'] ?? 'unknown',
+                        'created_by' => $payload['pusher']['name'] ?? $payload['sender']['login'] ?? 'unknown',
+                        'source_branch' => $this->determineSourceBranch($payload),
+                        'linked_task' => $this->extractLinkedTask($branchName),
+                    ]);
+                    Log::info("Branch created from push: {$branchName}");
                 }
             }
         }
+    }
+
+    /**
+     * Ensure repository exists in database, create if it doesn't
+     */
+    private function ensureRepositoryExists(array $repoData): ?Repository
+    {
+        $repository = Repository::where('github_id', $repoData['id'])->first();
+
+        if (!$repository) {
+            Log::info("Repository not found, creating: {$repoData['full_name']}");
+            $repository = $this->syncRepository($repoData);
+        }
+
+        return $repository;
+    }
+
+    /**
+     * Sync repository data to database
+     */
+    private function syncRepository(array $repo): Repository
+    {
+        Log::info("Syncing repository: {$repo['full_name']}");
+
+        $repository = Repository::updateOrCreate(
+            ['github_id' => $repo['id']],
+            [
+                'name' => $repo['name'],
+                'full_name' => $repo['full_name'],
+                'url' => $repo['html_url'],
+                'description' => $repo['description'] ?? null,
+                'private' => $repo['private'] ?? false,
+                'default_branch' => $repo['default_branch'],
+                'owner_info' => $repo['owner'] ?? [],
+            ]
+        );
+
+        Log::info("Repository saved - ID: {$repository->id}, Name: {$repository->full_name}");
+        return $repository;
     }
 
     private function determineSourceBranch(array $payload): ?string
