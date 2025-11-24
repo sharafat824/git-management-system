@@ -17,18 +17,12 @@ Route::get('dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// Route::get('/', [RepositoryController::class, 'index'])->name('repositories.index');
-// Route::get('/repositories/{repository}/branches', [RepositoryController::class, 'branches'])->name('repositories.branches');
-
-// // Webhook route
-// Route::post('/webhooks/github', [GitHubWebhookController::class, 'handle']);
-
 require __DIR__.'/settings.php';
 
 
+Route::middleware('auth')->group(function ()  {
 Route::get('/repo', [RepositoryController::class, 'index'])->name('repositories.index');
 Route::get('/repositories/{repository}/branches', [RepositoryController::class, 'branches'])->name('repositories.branches');
+});
 
-// // Webhook route with CSRF exemption
-// Route::post('/webhooks/github', [GitHubWebhookController::class, 'handle'])
-//     ->middleware([\App\Http\Middleware\HandleGitHubWebhook::class, VerifyGitHubWebhook::class]);
+
