@@ -1,101 +1,148 @@
 <template>
-  <div class="min-h-screen bg-gray-50 py-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="mb-8">
-        <Link
-          :href="route('repositories.index')"
-          class="inline-flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-        >
-          <ArrowLeft class="w-4 h-4 mr-2" />
-          Back to repositories
-        </Link>
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ repository.name }}</h1>
-          <p class="text-gray-600">{{ repository.full_name }}</p>
-          <div class="flex items-center space-x-4 mt-4 text-sm text-gray-500">
-            <span class="flex items-center">
-              <GitBranch class="w-4 h-4 mr-1" />
-              Default: {{ repository.default_branch }}
-            </span>
-            <span class="flex items-center">
-              <GitFork class="w-4 h-4 mr-1" />
-              {{ branches.length }} branches
-            </span>
-          </div>
-        </div>
-      </div>
+    <AppLayout>
+        <AppContent class="p-6">
+            <div class="space-y-6">
+                <!-- Header Section -->
+                <div class="space-y-4">
+                    <Button variant="ghost" size="sm" @click="goBack" class="gap-2">
+                        <ArrowLeft class="w-4 h-4" />
+                        Back to repositories
+                    </Button>
 
-      <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h2 class="text-lg font-semibold text-gray-900">Branches</h2>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Branch Name
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created By
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Source
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Linked Task
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-              <tr v-for="branch in branches" :key="branch.id" class="hover:bg-gray-50 transition-colors">
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center">
-                    <GitBranch class="w-4 h-4 text-gray-400 mr-3" />
-                    <span class="text-sm font-medium text-gray-900 font-mono">{{ branch.name }}</span>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">{{ branch.created_by || 'N/A' }}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-500 font-mono">{{ branch.source_branch || 'N/A' }}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span
-                    v-if="branch.linked_task"
-                    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                  >
-                    {{ branch.linked_task }}
-                  </span>
-                  <span v-else class="text-sm text-gray-400">-</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ formatDate(branch.created_at) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle class="text-2xl">{{ repository.name }}</CardTitle>
+                            <CardDescription>{{ repository.full_name }}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div class="flex items-center gap-4 text-sm text-muted-foreground">
+                                <div class="flex items-center gap-2">
+                                    <GitBranch class="w-4 h-4" />
+                                    <span>Default: {{ repository.default_branch }}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <GitFork class="w-4 h-4" />
+                                    <span>{{ branches.length }} branches</span>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
-        <div v-if="branches.length === 0" class="text-center py-12">
-          <GitBranch class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 class="text-lg font-medium text-gray-900 mb-2">No branches yet</h3>
-          <p class="text-gray-600">Branches will appear here once they're created on GitHub</p>
-        </div>
-      </div>
-    </div>
-  </div>
+                <!-- Branches Table -->
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Branches</CardTitle>
+                        <CardDescription>
+                            All branches synced from GitHub for this repository
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent class="p-0">
+                        <div class="border-t">
+                            <div class="relative overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="border-b bg-muted/50">
+                                            <th class="h-12 px-6 text-left align-middle font-medium text-muted-foreground">
+                                                Branch Name
+                                            </th>
+                                            <th class="h-12 px-6 text-left align-middle font-medium text-muted-foreground">
+                                                Created By
+                                            </th>
+                                            <th class="h-12 px-6 text-left align-middle font-medium text-muted-foreground">
+                                                Source
+                                            </th>
+                                            <th class="h-12 px-6 text-left align-middle font-medium text-muted-foreground">
+                                                Linked Task
+                                            </th>
+                                            <th class="h-12 px-6 text-left align-middle font-medium text-muted-foreground">
+                                                Created
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr
+                                            v-for="branch in branches"
+                                            :key="branch.id"
+                                            class="border-b transition-colors hover:bg-muted/50"
+                                        >
+                                            <td class="p-6 align-middle">
+                                                <div class="flex items-center gap-3">
+                                                    <GitBranch class="w-4 h-4 text-muted-foreground" />
+                                                    <code class="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">
+                                                        {{ branch.name }}
+                                                    </code>
+                                                </div>
+                                            </td>
+                                            <td class="p-6 align-middle">
+                                                <span class="font-medium">{{ branch.created_by || 'N/A' }}</span>
+                                            </td>
+                                            <td class="p-6 align-middle">
+                                                <code
+                                                    v-if="branch.source_branch"
+                                                    class="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm"
+                                                >
+                                                    {{ branch.source_branch }}
+                                                </code>
+                                                <span v-else class="text-muted-foreground">N/A</span>
+                                            </td>
+                                            <td class="p-6 align-middle">
+                                                <Badge
+                                                    v-if="branch.linked_task"
+                                                    variant="secondary"
+                                                >
+                                                    {{ branch.linked_task }}
+                                                </Badge>
+                                                <span v-else class="text-muted-foreground">-</span>
+                                            </td>
+                                            <td class="p-6 align-middle text-muted-foreground">
+                                                {{ formatDate(branch.created_at) }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Empty State -->
+                            <div
+                                v-if="branches.length === 0"
+                                class="text-center py-12"
+                            >
+                                <div class="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                                    <GitBranch class="w-6 h-6 text-muted-foreground" />
+                                </div>
+                                <CardTitle class="text-lg mb-2">No branches yet</CardTitle>
+                                <CardDescription>
+                                    Branches will appear here once they're created on GitHub and synced to your system.
+                                </CardDescription>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </AppContent>
+    </AppLayout>
 </template>
 
 <script setup>
-import { Link } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { ArrowLeft, GitBranch, GitFork } from 'lucide-vue-next'
 
-defineProps({
+// Import Wayfinder routes and layout
+import AppLayout from '@/layouts/AppLayout.vue'
+import AppContent from '@/components/AppContent.vue'
+import repositories from '@/routes/repositories'
+
+// Import shadcn components
+import Button from '@/components/ui/button/Button.vue'
+import Card from '@/components/ui/card/Card.vue'
+import CardContent from '@/components/ui/card/CardContent.vue'
+import CardDescription from '@/components/ui/card/CardDescription.vue'
+import CardHeader from '@/components/ui/card/CardHeader.vue'
+import CardTitle from '@/components/ui/card/CardTitle.vue'
+import Badge from '@/components/ui/badge/Badge.vue'
+
+const props = defineProps({
   repository: {
     type: Object,
     required: true
@@ -105,6 +152,11 @@ defineProps({
     default: () => []
   }
 })
+
+const goBack = () => {
+  const repositoriesRoute = repositories.index()
+  router.visit(repositoriesRoute.url)
+}
 
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('en-US', {

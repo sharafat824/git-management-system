@@ -12,9 +12,8 @@ class RepositoryController extends Controller
         $repositories = Repository::withCount('branches')
             ->latest()
             ->get();
-
-        return Inertia::render('Repositories/Index', [
-            'repositories' => $repositories,
+        return Inertia::render('repos/Index', [
+            'repositoriesList' => $repositories,
             'lastSynced' => now()->toISOString(),
         ]);
     }

@@ -7,15 +7,15 @@ use App\Http\Middleware\VerifyGitHubWebhook;
 use App\Http\Controllers\RepositoryController;
 use App\Http\Controllers\GitHubWebhookController;
 
-// Route::get('/', function () {
-//     return Inertia::render('Welcome', [
-//         'canRegister' => Features::enabled(Features::registration()),
-//     ]);
-// })->name('home');
+Route::get('/', function () {
+    return Inertia::render('Welcome', [
+        'canRegister' => Features::enabled(Features::registration()),
+    ]);
+})->name('home');
 
-// Route::get('dashboard', function () {
-//     return Inertia::render('Dashboard');
-// })->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('dashboard', function () {
+    return Inertia::render('Dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
 // Route::get('/', [RepositoryController::class, 'index'])->name('repositories.index');
 // Route::get('/repositories/{repository}/branches', [RepositoryController::class, 'branches'])->name('repositories.branches');
@@ -23,10 +23,10 @@ use App\Http\Controllers\GitHubWebhookController;
 // // Webhook route
 // Route::post('/webhooks/github', [GitHubWebhookController::class, 'handle']);
 
-// require __DIR__.'/settings.php';
+require __DIR__.'/settings.php';
 
 
-Route::get('/', [RepositoryController::class, 'index'])->name('repositories.index');
+Route::get('/repo', [RepositoryController::class, 'index'])->name('repositories.index');
 Route::get('/repositories/{repository}/branches', [RepositoryController::class, 'branches'])->name('repositories.branches');
 
 // // Webhook route with CSRF exemption
